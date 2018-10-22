@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <fstream>
 #include <map>
+#include <numeric>
 #include <unordered_map>
 #include <iostream>
 #include <iterator>
@@ -29,11 +30,12 @@
 #include <sstream>
 #include <vector>
 
-#define BACKLOG 100	 // how many pending connections queue will hold
+#define BACKLOG 10000 // how many pending connections queue will hold
 
 class Server
 {
 	public:
+		//Socket variables
 		int sockfd, newsockfd;  // listen on sock_fd, new connection on newsockfd
 		struct addrinfo hints, *servinfo, *p;
 		struct sockaddr_storage their_addr; // connector's address information
@@ -42,18 +44,40 @@ class Server
 		int yes=1;
 		char s[INET6_ADDRSTRLEN];
 		int rv;
-		Node serv;
 		int error_num;
+
+		//From project 1
 		std::map<int, int> k_hop_map;
 		int num_nodes;
-		bool discovered;
 		std::set<int> terminated_nodes;
 		int num_terminate_messages;
-		//std::vector<std::string> k_hop;
-		Server(const Node& serv);
-		//Server(const Node& serv, int num_nodes);
+
+		//Relevant to project 2
+		Node serv;
+		std::unordered_map<int, Node> node_map;
+
+		size_t num_discovery_message;
+		size_t num_no_message;
+		size_t num_done_message;
+		bool discovered;
+
+		std::vector<int> test_nums;
+
+		void Message_Handler(std::string type, std::string destination);
+		void Message_Handler(std::string type, Node destination);
+
+		void Message_Handler(std::string type, Node destination, std::string contents);
+
+		void Broadcast(std::string contents);
+		void Broadcast(std::string contents, Node ignore);
+		//void Broadcast(std::string contents, std::string ignore)
+
+		Server(Node& serv);
+		Server(Node& serv, std::unordered_map<int, Node> node_map);
+		
 		int Listen();
 		void ProcessMessage(const char* buffer);
+
 		void *get_in_addr(struct sockaddr *sa);
 };
 

@@ -100,8 +100,8 @@ int Client::SendMessage(Message out)
 	char buffer[1024]; 
     strcpy(buffer, msg);  
 
-	std::cout << "Send Message" << std::endl;
-	printf("%s", buffer);
+//	std::cout << "Send Message" << std::endl;
+//	printf("%s", buffer);
 
 	int msg_rtn = write(sockfd,buffer,strlen(buffer)); // Send the message to neighbors 
 	memset(buffer, 0, 1024); // reset buffer
@@ -113,7 +113,6 @@ int Client::SendMessage(Message out)
 int Client::Close()
 {
 		close(sockfd);
-
 		return 0;
 }
 

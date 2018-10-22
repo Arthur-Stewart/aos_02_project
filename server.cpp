@@ -5,255 +5,125 @@ void Server::ProcessMessage(const char* buffer)
 {
 	std::string b(buffer);
 	std::istringstream iss(b);
-
 	std::vector<std::string> msg_tokens{std::istream_iterator<std::string>{iss},std::istream_iterator<std::string>{}};
 
 	std::string kind = msg_tokens[0];
 	std::string source = msg_tokens[1];
 
-	std::cout << "Unpacked Message" << std::endl;
-	std::cout << "Kind: " << kind << std::endl;
-	std::cout << "Source: " << source << std::endl;
+	std::string contents;
 
-	// What kinds of messages make sense?
-	// Discovery
-	// PACK
-	// NACK
-	// Terminate (end of discovery)
-	
-	// Need to store a Spanning Tree_Node structure
-	// What fields will it have?
-	// Parent
-	// Children
-	
+	if(kind == "Broadcast")
+	{
+		contents = msg_tokens[2]; 
+	}
+
+	//std::cout << "Kind: " << kind << std::endl;
+	//std::cout << "Source: " << source << std::endl;
+
 	if (kind == "Discovery")
 	{
-		// When the node receives an outbound message it will reply to its parent
-
-		//Sets it's parent field if it's not set
-		if (!serv.parent)
+		if (serv.parent.empty())
 		{
-			//Replys with parent acknowledgement
-			
-			for (auto& one_hop: serv.one_hop_neighbors)
+			serv.parent.emplace_back(node_map[std::stoi(source)]);
+			Message_Handler("Parent", source);
+					
+			for (const auto& one_hop: serv.one_hop_neighbors)
 			{
-				if (one_hop.node_id == std::stoi(source))
+				if (serv.parent[0].node_id != one_hop.node_id)
 				{
-					serv.parent = &one_hop;
-					Message pack("Parent");
-					pack.source = serv.node_id;
-					Client c1(serv, one_hop);
-					c1.SendMessage(pack);
-					break;
+					++num_discovery_message;
+				}
+			}
+
+			if (num_discovery_message == 0)
+			{
+				Message_Handler("Done", serv.parent[0]);
+			}
+
+			//Sends a Discovery message to each of it's neighbors
+			for (const auto& one_hop: serv.one_hop_neighbors)
+			{
+				if (serv.parent[0].node_id != one_hop.node_id)
+				{
+					Message_Handler("Discovery", one_hop);
 				}
 			}
 		}
-
-		//Sends a Discovery message to each of it's neighbors
-		
-		for (const auto& one_hop: serv.one_hop_neighbors)
+		//PARENT field already set send no
+		else
 		{
-			//Doesn't need to send message to parent
-			//Or you can have logic that parent ignores the message
-			
-			Message out("Discovery");
-			out.source = serv.node_id;
-			Client c1(serv, one_hop);
-			c1.SendMessage(out);
+			Message_Handler("No", source);
 		}
-		
-		// Marks itself as visited which could really be the same thing as it having a parent field
-		// Sends a message to it's neighbors (excluding parent)
-		
+	}
+	
+	else if (kind == "Parent")
+	{
+		//Let's change it so each client has the node map so you can easily look this up 
+		serv.children.emplace_back(node_map[std::stoi(source)]);
+		//Add nodes to children
 	}
 
-	// Parent Logic Next
+	else if (kind == "No")
+	{
+		//++num_no_message;
+		if (++num_no_message == num_discovery_message)
+		{
+			Message_Handler("Done", serv.parent[0]);
+		}
+	}
 	
-	// ACKNOWLEDGEMENT
-	
-	//Parent
-	//No
-	
-	//Upon receiving the acknowledgements is when the tree will be built
-	
-	// TERMINATION
+	else if (kind == "Done")
+	{
+		//++num_done_message;
+		if(++num_done_message == serv.children.size())
+		{
+			if (serv.parent.empty())
+			{
+				//std::cout << "Finished building tree" << std::endl;\newline
+				serv.PrintTree();
+				for (const auto&n: serv.children)
+				{
+					Message_Handler("Finished", n);
+				}
+				discovered = true;
+			}
+			else
+			{
+				Message_Handler("Done", serv.parent[0]);
+				//If node has recived done from all of it's children
+				//Send done to parent
+			}
+		}
+	}
 
-	// IF THE MESSAGE IS AN INBOUND MESSAGE SPECIAL LOGIC
-//	if (msg.kind == "inbound")
-//	{
-//		//std::cout << msg << std::endl;
-//		// Back to original Sender
-//		//std::cout << "Serv_node_id " << serv.node_id << " " << "og sender " << msg.path[0] << std::endl;
-//		if (serv.node_id == msg.path[0])
-//		{
-//			// This message gives you a path back so send a termination message
-//			// You can follow this path back to send a terminate but that seems a bit silly
-//			
-//			// Print one hop neighbors based on information
-//			//std::cout << msg.path.size() - 1 << " " << msg.path.end()[-1] << std::endl;
-//			//std::cout << msg.path.size() - 1 << " hop neighbor " << msg.path.end()[-1] << std::endl;
-//			//std::cout << std::endl;
-//
-//			int node_id = msg.path.end()[-1];
-//			int hop = msg.path.size() - 1;
-//
-//			if (k_hop_map[node_id] > hop || k_hop_map[node_id] == 0)
-//			{
-//				k_hop_map[node_id] = hop;
-//			}
-//
-//		//	for( const auto& n: k_hop_map) 
-//		//	{
-//		//		std::cout << "Node id:[" << n.first << "] Hop:[" << n.second << "]" << std::endl;
-//		//	}
-//		//	
-//		//	std::cout << std::endl;
-//
-//			if (k_hop_map.size() == num_nodes - 1)
-//			{
-//				if (!discovered)
-//				{
-//					// Broadcast terminate message to all neighbors
-//					// This means you have to figure out the path to each
-//					// You don't necessarily know the path though you only know your one hop neighbors
-//					
-//					std::vector<std::vector<int>> results(num_nodes, std::vector<int>());
-//					
-//					for( const auto& n: k_hop_map) 
-//					{
-//						//std::cout << "Node id:[" << n.first << "] Hop:[" << n.second << "]" << std::endl;
-//						results[n.second].emplace_back(n.first);
-//					}				
-//
-//					int hop = 0;
-//
-//					for(const auto &v: results)
-//					{
-//						if (!v.empty())
-//						{
-//							std:: cout << hop << " hop neighbors ";
-//							for (const auto &i: v)
-//							{
-//								std::cout << i << " ";
-//							}
-//							std::cout << std::endl;
-//						
-//						}
-//						++hop;
-//					}
-//
-//					discovered = true;
-//				}
-//				
-//				// Send termination message back
-//				//int term_node_id = msg.path[1];
-//		
-//				// Broadcast termination message
-//
-//				Message term("terminate");
-//				term.path.emplace_back(serv.node_id);
-//				// Add current node and one hop neighbors to visited
-//				term.visited.emplace_back(serv.node_id);
-//
-//				for (const auto& one_hop: serv.one_hop_neighbors)
-//				{
-//					term.visited.emplace_back(one_hop.node_id);
-//				}
-//
-//				// Send message to one hop neighbors
-//				for (const auto& one_hop: serv.one_hop_neighbors)
-//				{
-//					Message term_hop = term;
-//					Client c1(serv, one_hop);
-//					c1.SendMessage(term_hop);
-//					// Should I close the socket? Should I multi-thread this?
-//				}
-//			}
-//		}
-//
-//		else  // Relay Back to Original 
-//		{
-//			// The return node id is one less than the serv_node_id
-//			int ret_node_id = -1;
-//			for (std::vector<int>::iterator it = msg.path.begin(); it != msg.path.end(); it++)
-//			{
-//				if ((*it) == serv.node_id)
-//				{
-//					ret_node_id = *(it - 1);
-//				}
-//			}
-//
-//			//std::cout << "Return Node Id: " << ret_node_id << std::endl;
-//			for (const auto& one_hop: serv.one_hop_neighbors)
-//			{
-//				if(ret_node_id == one_hop.node_id)
-//				{
-//					//std::cout << "Relaying" << std::endl;
-//					Message ret_msg = msg;
-//					ret_msg.kind = "inbound";
-//					Client ret(serv, one_hop);
-//					ret.SendMessage(ret_msg);
-//				}
-//			}
-//		}
-//	}
-//	
-//	// ELSE IF THE MESSAGE WAS OUTBOUND
-//	else
-//	{
-//		//Add current node to path
-//		msg.path.emplace_back(serv.node_id);
-//
-//		// It would be the path
-//		// Need to check size of path or have some way to know you are back to start
-//		
-//		int ret_node_id = msg.path.end()[-2];
-//		for (const auto& one_hop: serv.one_hop_neighbors)
-//		{
-//			if(ret_node_id == one_hop.node_id)
-//			{
-//				Message ret_msg = msg;
-//				ret_msg.kind = "inbound";
-//				Client ret(serv, one_hop);
-//				ret.SendMessage(ret_msg);
-//			}
-//		}
-//		
-//		//Client c1(serv, one_hop);
-//		//c1.SendMessage(msg);
-//		
-//		// Copy nodes visisted before
-//		std::vector<int> pre_visited = msg.visited;
-//		// Add current node and one hop neighbors to visited
-//		msg.visited.emplace_back(serv.node_id);
-//
-//		for (const auto& one_hop: serv.one_hop_neighbors)
-//		{
-//			msg.visited.emplace_back(one_hop.node_id);
-//			// I'm going to allow duplicates for now
-//		}
-//		// Send reply message back to original sender
-//
-//		// Send message to one hop neighbors
-//		for (const auto& one_hop: serv.one_hop_neighbors)
-//		{
-//			// If the node hasn't been visisted 	
-//			auto result1 = std::find(std::begin(pre_visited), std::end(pre_visited), one_hop.node_id);
-//			if (result1 == std::end(pre_visited)) 
-//			{
-//				Client c1(serv, one_hop);
-//				c1.SendMessage(msg);
-//			}
-//		}
-//	}
+	else if (kind == "Finished")
+	{
+		serv.PrintTree();
+		for (const auto&n: serv.children)
+		{
+			Message_Handler("Finished", n);
+		}
+		discovered = true;
+	}
 
+	else if (kind == "Broadcast")
+	{
+		std::cout << "Received Broadcast" << std::endl;
+		std::cout << contents << std::endl;
+		test_nums.emplace_back(std::stoi(contents));
+		Broadcast(contents, node_map[std::stoi(source)]);
+	}
 }
 
-Server::Server(const Node& serv)
+Server::Server(Node& serv)
 {
 	this -> serv = serv;
 	discovered = false;
 	num_terminate_messages = 0;
+}
+
+Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), discovered(false)
+{
 }
 
 int Server::Listen()
@@ -263,7 +133,7 @@ int Server::Listen()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; // use my IP
 
-	std::cout << "Listening port: " << serv.port << std::endl;
+	//std::cout << "Listening port: " << serv.port << std::endl;
 
 	if ((rv = getaddrinfo(NULL, serv.port.c_str(), &hints, &servinfo)) != 0) 
 	{
@@ -324,7 +194,9 @@ int Server::Listen()
 
 	char buffer[1024];
 
-	while((terminated_nodes.size() != (num_nodes - 1)) || !discovered) 
+	bool flag = true;
+
+	while(1) 
 	{  // main accept() loop
 		sin_size = sizeof their_addr;
 		newsockfd= accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
@@ -341,54 +213,85 @@ int Server::Listen()
 		if (read_rtn >= 0)
 		{
 			ProcessMessage(buffer);
+		} 
+
+		// Figure out if tree is finished
+		if (flag && discovered)
+		{
+			// Add test numbers to vector
+			// Generate random numbers
+			for (int i = 0; i < 32; ++i)
+			{
+				test_nums.emplace_back(i);
+				Broadcast(std::to_string(i));
+			}
+			flag = false;
 		}
 
-		//std::cout << "Number of terminate messages: " << terminated_nodes.size() << std::endl;
+		// How do I end the message service?
+		// I'm not sure
+		std::cout << "Sum: " << std::accumulate(test_nums.begin(), test_nums.end(), 0) << std::endl;
 
-         // if (read_rtn < 0)
-         // {
-         //     error("ERROR reading from socket");
-         // }
-	   
-		// Need some way to process message
-		// Have it used by client connection
-
-//		if (!fork()) 
-//		{ // this is the child process
-//            memset(buffer, 0, 1024);
-//            int read_rtn = read(newsockfd, buffer, 1023);
-//			if (read_rtn >= 0)
-//			{
-//				ProcessMessage(buffer);
-//			}
-//
-//           // if (read_rtn < 0)
-//           // {
-//           //     error("ERROR reading from socket");
-//           // }
-//		   
-//			// Need some way to process message
-//			// Have it used by client connection
-//
-//			close(sockfd); // child doesn't need the listener
-//			//if (send(newsockfd, "hello, world!", 13, 0) == -1)
-//			//{
-//			//	perror("send");
-//			//}
-//			close(newsockfd);
-//			exit(0);
-//		}
-//		close(newsockfd);  // parent doesn't need this
 	}  // end server
 	sleep(2);
 	close(sockfd);
-
-//	for(const auto& n: k_hop_map) 
-//	{
-//		std::cout << "Node id:[" << n.first << "] Hop:[" << n.second << "]\n";
-//	}				
 }
 
+void Server::Broadcast(std::string contents, Node ignore)
+{
+	// Send a message to all neighbors
+	// Except that you want to excluse sending it back to the source
+	// I'll just overload this function for that case
+	
+	//std::cout << "Broadcasting " << contents << std::endl;
+	
+	if(!serv.parent.empty())
+	{
+		if (ignore.node_id != serv.parent[0].node_id)
+		{
+			Message_Handler("Broadcast", serv.parent[0], contents);
+		}
+	}
+	for (const auto& n: serv.children)
+	{
+		if (ignore.node_id != n.node_id)
+		{
+			Message_Handler("Broadcast", n, contents);
+		}
+	}
+}
+
+void Server::Broadcast(std::string contents)
+{
+	// Send a message to all neighbors
+	// Except that you want to excluse sending it back to the source
+	// I'll just overload this function for that case
+	std::cout << "Broadcasting " << contents << std::endl;
+	Broadcast(contents, serv);
+}
+
+void Server::Message_Handler(std::string type, Node destination, std::string contents)
+{
+	Message pack(type, contents);
+	pack.source = serv.node_id;
+	Client c1(serv, destination);
+	c1.SendMessage(pack);
+	c1.Close();
+}
+
+void Server::Message_Handler(std::string type, std::string destination)
+{
+	Message_Handler(type, node_map[std::stoi(destination)]);
+}
+
+void Server::Message_Handler(std::string type, Node destination)
+{
+	Message pack(type);
+	pack.source = serv.node_id;
+	Client c1(serv, destination);
+	c1.SendMessage(pack);
+	c1.Close();
+}
 
 void *Server::get_in_addr(struct sockaddr *sa)
 {

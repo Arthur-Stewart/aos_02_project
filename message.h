@@ -14,8 +14,11 @@ class Message
 		std::vector<int> visited;
 		int destination;
 
+		std::string contents;
+
 		Message();
 		Message(std::string kind);
+		Message(std::string kind, std::string contents);
 
 		std::string To_String();
 		friend std::ostream &operator<<(std::ostream &os, Message const &m); 

@@ -28,9 +28,9 @@ int main(int argc, char** argv)
 	p1.Parse_Config();
 
 	Node process_node = p1.node_map[std::stoi(argv[2])];
-	std::cout << "node_id_process " << process_node.node_id << std::endl;
+	std::cout << "node_id " << process_node.node_id << std::endl;
 
-	Server s1(process_node);
+	Server s1(process_node, p1.node_map);
 	s1.num_nodes = p1.num_nodes;
 	std::thread t1(&Server::Listen, s1);
 
@@ -40,14 +40,8 @@ int main(int argc, char** argv)
 	if (process_node.node_id == 0)
 	{
 		//Send a message to all neighbors
-		//I want some kind of tree node class
-		
 		Message out("Discovery");
 		out.source = process_node.node_id;
-
-		//std::cout << out << std::endl;
-		
-		//std::cout << "Test: " <<  out.To_String() << std::endl;
 
 		// Send message to one hop neighbors
 		for (const auto& one_hop: process_node.one_hop_neighbors)
@@ -55,13 +49,9 @@ int main(int argc, char** argv)
 			Message out_hop = out;
 			Client c1(process_node, one_hop);
 			c1.SendMessage(out_hop);
-
-			// Should I close the socket? Should I multi-thread this?
 		}
 	}
 
 	t1.join();
-
-	// How do I know when to stop everything?
 }
 

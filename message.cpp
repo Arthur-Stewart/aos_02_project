@@ -10,9 +10,20 @@ Message::Message(std::string kind)
 	this -> kind = kind;
 }
 
+Message::Message(std::string kind, std::string contents) : kind(kind) , contents(contents)
+{
+}
+
 std::string Message::To_String()
 {
-	return kind + " " + std::to_string(source);
+	if (contents.empty())
+	{
+		return kind + " " + std::to_string(source);
+	}
+	else
+	{
+		return kind + " " + std::to_string(source) + " " + contents;
+	}
 }
 
 std::ostream &operator<<(std::ostream &os, Message const &m)
