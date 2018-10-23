@@ -62,6 +62,7 @@ class Server
 		bool discovered;
 
 		std::vector<int> test_nums;
+		size_t sum;
 
 		void Message_Handler(std::string type, std::string destination);
 		void Message_Handler(std::string type, Node destination);

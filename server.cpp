@@ -111,6 +111,7 @@ void Server::ProcessMessage(const char* buffer)
 		std::cout << "Received Broadcast" << std::endl;
 		std::cout << contents << std::endl;
 		test_nums.emplace_back(std::stoi(contents));
+		sum += std::stoi(contents);
 		Broadcast(contents, node_map[std::stoi(source)]);
 	}
 }
@@ -122,7 +123,7 @@ Server::Server(Node& serv)
 	num_terminate_messages = 0;
 }
 
-Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), discovered(false)
+Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), discovered(false), sum(0)
 {
 }
 
@@ -220,8 +221,9 @@ int Server::Listen()
 		{
 			// Add test numbers to vector
 			// Generate random numbers
-			for (int i = 0; i < 32; ++i)
+			for (int i = 0; i <= 30; ++i)
 			{
+				sum += i;
 				test_nums.emplace_back(i);
 				Broadcast(std::to_string(i));
 			}
@@ -230,7 +232,8 @@ int Server::Listen()
 
 		// How do I end the message service?
 		// I'm not sure
-		std::cout << "Sum: " << std::accumulate(test_nums.begin(), test_nums.end(), 0) << std::endl;
+		//std::cout << "Sum: " << std::accumulate(test_nums.begin(), test_nums.end(), 0) << std::endl;
+		std::cout << "Sum: " << sum << std::endl;
 
 	}  // end server
 	sleep(2);
