@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <iterator>
+#include <queue>
 #include <set>
 #include <sstream>
 #include <vector>
@@ -64,6 +65,9 @@ class Server
 		std::vector<int> test_nums;
 		size_t sum;
 
+		std::queue<std::string> message_queue;
+		std::unordered_map<int, int> parent_map;
+
 		// dynamic int array to store "path", i.e. a node among 1-hop neighbors, to reach each node 
 		int * reachPath;
 		// dynamic boolean array to check and control the broadcast-convergecast
@@ -71,7 +75,6 @@ class Server
 		// receiving convergecast intended for converge destination x set value at index x to true
 		bool * destConverged;
 		bool finBroadcast;
-
 
 		void Message_Handler(std::string type, std::string destination);
 		void Message_Handler(std::string type, Node destination);

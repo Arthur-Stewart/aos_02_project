@@ -24,5 +24,9 @@ client.o: client.cpp client.h node.h message.h
 server.o: server.cpp server.h node.h client.h
 	g++ $(CPPFLAGS) -c server.cpp
 
+clean:
+	-rm -f *.o
+	-rm -f main
+
 
               

@@ -16,11 +16,13 @@ class Node
 
 		std::vector <Node> parent; 
 		std::vector <Node> children;
+		std::vector <Node> tree_neighbors;
 
 		Node();
 		Node(int node_id, std::string hostname, std::string port);
 
 		void PrintTree();
+		void PrintTreeNeighbors();
 
 		void Add_One_Hop_Neighbor(const Node& neighbor);
 		friend std::ostream &operator<<(std::ostream &os, Node const &n); 

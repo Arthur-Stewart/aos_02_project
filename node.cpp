@@ -36,6 +36,16 @@ void Node::PrintTree()
 	}
 }
 
+void Node::PrintTreeNeighbors()
+{
+	std::cout << "Tree Neighbors: ";
+	for (const auto &n: tree_neighbors)
+	{
+		std::cout << n.node_id << " ";
+	}
+	std::cout << std::endl;
+}
+
 std::ostream & operator<<(std::ostream &os, Node const &n)
 {
 	std::cout << "NODE : ID = " << n.node_id << " HOSTNAME = " << n.hostname << " PORT = " << n.port;
