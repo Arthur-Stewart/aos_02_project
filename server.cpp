@@ -83,7 +83,7 @@ int Server::Listen()
 		if (flag && discovered)
 		{
 			// Add test numbers to vector
-			for (int i = 0; i <= 30; ++i)
+			for (int i = 0; i <= 20; ++i)
 			{
 				sum += i;
 				test_nums.emplace_back(i);
@@ -97,7 +97,7 @@ int Server::Listen()
 			flag = false;
 		}
 
-		std::cout << "Sum: " << sum << std::endl;
+		std::cerr << "Sum: " << sum << std::endl;
 
 	}  // end server
 	sleep(2);
@@ -111,8 +111,11 @@ void Server::ProcessMessage(const char* buffer)
 	std::vector<std::string> msg_tokens{std::istream_iterator<std::string>{iss},std::istream_iterator<std::string>{}};
 
 	std::string kind = msg_tokens[0];
-	std::string source = msg_tokens[1];
-	std::string origin = msg_tokens[2]; // broadcast's origin
+	//std::string source = msg_tokens[1];
+	//std::string origin = msg_tokens[2]; // broadcast's origin
+	
+	int source = std::stoi(msg_tokens[1]);
+	int origin = std::stoi(msg_tokens[2]); // Broadcast's origin
 	
 	std::string contents;
 
@@ -125,7 +128,7 @@ void Server::ProcessMessage(const char* buffer)
 	{
 		if (serv.parent.empty())
 		{
-			serv.parent.emplace_back(node_map[std::stoi(source)]);
+			serv.parent.emplace_back(node_map[source]);
 			Message_Handler("Parent", source);
 					
 			for (const auto& one_hop: serv.one_hop_neighbors)
@@ -159,7 +162,8 @@ void Server::ProcessMessage(const char* buffer)
 	
 	else if (kind == "Parent")
 	{
-		serv.children.emplace_back(node_map[std::stoi(source)]);
+		//serv.children.emplace_back(node_map[std::stoi(source)]);
+		serv.children.emplace_back(node_map[source]);
 	}
 
 	else if (kind == "No")
@@ -228,45 +232,51 @@ void Server::ProcessMessage(const char* buffer)
 		test_nums.emplace_back(std::stoi(contents));
 		sum += std::stoi(contents);
 
-		//Set parent_map
-		parent_map[std::stoi(origin)] = std::stoi(source);
+		parent_map[origin] = source; //Set parent_map
 
-		Broadcast(contents, serv, std::stoi(origin));
+		if (IsLeaf(origin))  // Send convergcast to parent
+		{
+			Message_Handler("Convergecast", node_map[parent_map[origin]], contents, origin);
+		}
+		else // Continue Broadcast
+		{
+			Broadcast(contents, origin);
+			//Working broadcast
+			//Broadcast(contents, node_map[std::stoi(source)], std::stoi(origin));
+		}
 	}
 
-	//else if (kind == "Convergecast")
-	//{
-	//	// if convergeDest != this node
-	//	// continue ongoing convergecast for a converge destination
-	//	// dest = find through reach path at index = converge dest 
-	//	// origin = unchanged, converge dest/root = unchanged
+	else if (kind == "Convergecast")
+	{
+		// Need to do similar logic to building the tree
+		// Once a node receives convergecast from all of its childre 
+		if (serv.node_id == origin)
+		{
+			// Convergecast reached original broadcaster
 
-	//	if ((std::stoi(convergeDest)) != serv.node_id )
-	//	{
-	//		if (!(this->destConverged[std::stoi(convergeDest)]))
-	//		{
-	//			// if converged flag for destination x is false, increment converge count, then set flag to true
-	//			convergeCount = std::to_string(std::stoi(contents) + 1);
-	//			this->destConverged[std::stoi(convergeDest)] = true;
-	//			Message_Handler("Convergecast", this->node_map[this->reachPath[std::stoi(convergeDest)]], convergeCount);
-	//		}
-	//		else
-	//		{
-	//			// else, no change to converge count (in contents)
-	//			Message_Handler("Convergecast", this->node_map[this->reachPath[std::stoi(convergeDest)]], contents);
-	//		}
-	//	}
-	//	else
-	//	{
-	//		// converge cast msg reach destination
-	//		convergeSum += std::stoi(contents);
-	//		// convergeSum = number of nodes - 1 => convergecast completed => broadcast completed successfully
-	//		if(convergeSum == (this->num_nodes - 1) )
-	//		{
-	//			this->finBroadcast = true;
-	//		}
-	//	}
-	//}
+			if(++converge_count_map[origin] == Num_Children(origin))
+			{
+				converge_count_map[origin] = 0;
+				//std::cerr << "Convergecast success: " << contents << std::endl;
+				// Send next message is the queue if it exists
+				if (!message_queue.empty())
+				{
+					// Pop message off message queue 
+					Broadcast(message_queue.front(), serv);
+					message_queue.pop();
+				}
+			}
+		}
+		else // Send message to logical parent
+		{
+			if(++converge_count_map[origin] == Num_Children(origin))
+			{
+				// Reset convergecount
+				converge_count_map[origin] = 0;
+				Message_Handler("Convergecast", node_map[parent_map[origin]], contents, origin);
+			}
+		}
+	}
 }
 
 //Broadcast operation for origin node
@@ -278,6 +288,24 @@ void Server::Broadcast(std::string contents, Node ignore)
 	{
 		Message_Handler("Broadcast", n, contents, ignore.node_id);
 	}
+}
+
+void Server::Broadcast(std::string contents, int origin)
+{
+	// Send a message to all neighbors except logical parent
+	for (const auto &dest: serv.tree_neighbors)
+	{
+		if (parent_map[origin] != dest.node_id)
+		{
+			Message_Handler("Broadcast", dest, contents, origin);
+		}
+	}
+}
+
+// TO BE IMPLEMENTED
+bool Server::IsChild()
+{
+	return true;
 }
 
 // KEY BROADCAST OPERATION
@@ -318,13 +346,45 @@ void Server::Message_Handler(std::string type, std::string destination)
 	Message_Handler(type, node_map[std::stoi(destination)]);
 }
 
+void Server::Message_Handler(std::string type, int destination)
+{
+	Message_Handler(type, node_map[destination]);
+}
+
 void Server::Message_Handler(std::string type, Node destination)
 {
 	Message pack(type);
 	pack.source = serv.node_id;
 	Client c1(serv, destination);
+
+	//Debug
+	//std::cerr << pack << std::endl;
+
 	c1.SendMessage(pack);
 	c1.Close();
+}
+
+bool Server::IsLeaf(std::string origin)
+{
+	return IsLeaf(std::stoi(origin));
+}
+
+bool Server::IsLeaf(int origin)
+{
+	// How to determine if a node is a logical leaf given a particular origin
+	// Number of tree_neighbors will be 1
+	return serv.tree_neighbors.size() == 1;
+}
+
+// Number of child nodes with respect to origin node
+size_t Server::Num_Children(int origin)
+{
+	if (serv.node_id == origin)
+	{
+		return serv.tree_neighbors.size();
+	}
+
+	return  serv.tree_neighbors.size() - 1;
 }
 
 //Server Constructors/Destructor
@@ -350,8 +410,6 @@ Server::~Server()
 	delete [] reachPath;
 	delete [] destConverged;
 }
-
-
 
 // SOCKET HELPERS
 

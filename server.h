@@ -62,11 +62,19 @@ class Server
 		size_t num_done_message;
 		bool discovered;
 
+		bool IsChild();
+
+		size_t Num_Children(int origin);
+
+		bool IsLeaf(std::string origin);
+		bool IsLeaf(int origin);
+
 		std::vector<int> test_nums;
 		size_t sum;
 
 		std::queue<std::string> message_queue;
 		std::unordered_map<int, int> parent_map;
+		std::unordered_map<int, int> converge_count_map;
 
 		// dynamic int array to store "path", i.e. a node among 1-hop neighbors, to reach each node 
 		int * reachPath;
@@ -78,6 +86,7 @@ class Server
 
 		void Message_Handler(std::string type, std::string destination);
 		void Message_Handler(std::string type, Node destination);
+		void Message_Handler(std::string type, int destination);
 
 		void Message_Handler(std::string type, Node destination, std::string contents);
 		void Message_Handler(std::string type, Node destination, std::string contents, int origin);

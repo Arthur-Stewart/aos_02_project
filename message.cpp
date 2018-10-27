@@ -1,12 +1,12 @@
 #include "message.h"
 
-Message::Message() : kind("outbound")
+Message::Message() : kind("outbound"), origin(-1)
 {}
 
-Message::Message(std::string kind) : kind(kind)
+Message::Message(std::string kind) : kind(kind), origin(-1)
 {}
 
-Message::Message(std::string kind, std::string contents) : kind(kind) , contents(contents)
+Message::Message(std::string kind, std::string contents) : origin(-1), kind(kind), contents(contents)
 {}
 
 std::string Message::To_String()
@@ -25,9 +25,15 @@ std::string Message::To_String()
 std::ostream &operator<<(std::ostream &os, Message const &m)
 {
 	os << "KIND:" << m.kind << std::endl;
-	os << "SOURCE:" << m.source;
-	os << "ORIGIN:" << m.origin;
-	os << "CONTENT:" << m.contents;
+	os << "SOURCE:" << m.source << std::endl;
+	if (!m.contents.empty())
+	{
+		os << "CONTENTS:" << m.contents << std::endl;
+	}
+	if (m.origin != -1)
+	{
+		os << "ORIGIN:" << m.origin << std::endl;
+	}
 	
 	return os;
 }
