@@ -9,7 +9,7 @@ void Server::ProcessMessage(const char* buffer)
 
 	std::string kind = msg_tokens[0];
 	std::string source = msg_tokens[1];
-	std::string brcOrigin = msg_tokens[2]; // broadcast's origin
+	std::string brcOrigin = msg_tokens[2]; // broadcast's origin; also, in a converge cast, converge's origin (a leaf)
 	std::string convergeDest = msg_tokens[3]; // convergecast's dest/root
 
 	std::string contents;
@@ -157,12 +157,12 @@ void Server::ProcessMessage(const char* buffer)
 				// if converged flag for destination x is false, increment converge count, then set flag to true
 				convergeCount = std::to_string(std::stoi(contents) + 1);
 				this->destConverged[std::stoi(convergeDest)] = true;
-				Message_Handler("Convergecast", this->node_map[this->reachPath[std::stoi(convergeDest)]], convergeCount);
+				Message_Handler("Convergecast", this->node_map[this->reachPath[std::stoi(convergeDest)]], convergeCount, std::stoi(brcOrigin), std::stoi(convergeDest) );
 			}
 			else
 			{
 				// else, no change to converge count (in contents)
-				Message_Handler("Convergecast", this->node_map[this->reachPath[std::stoi(convergeDest)]], contents);
+				Message_Handler("Convergecast", this->node_map[this->reachPath[std::stoi(convergeDest)]], contents, std::stoi(brcOrigin), std::stoi(convergeDest) );
 			}
 		}
 		else
@@ -318,10 +318,6 @@ int Server::Listen()
 			std::cout << "Sum: " << sum << std::endl;
 			this->finBroadcast = false;
 		}
-
-
-
-
 
 	}  // end server
 	sleep(2);
