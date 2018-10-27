@@ -9,12 +9,17 @@ void Server::ProcessMessage(const char* buffer)
 
 	std::string kind = msg_tokens[0];
 	std::string source = msg_tokens[1];
+	std::string brcOrigin = msg_tokens[2]; // broadcast's origin
+	std::string convergeDest = msg_tokens[3]; // convergecast's dest/root
 
 	std::string contents;
 
-	if(kind == "Broadcast")
+	std::string convergeCount; // used for convergecast control
+	int convergeSum = 0;
+
+	if((kind == "Broadcast") || (kind == "Convergecast"))
 	{
-		contents = msg_tokens[2]; 
+		contents = msg_tokens[4]; 
 	}
 
 	//std::cout << "Kind: " << kind << std::endl;
@@ -77,6 +82,7 @@ void Server::ProcessMessage(const char* buffer)
 		//++num_done_message;
 		if(++num_done_message == serv.children.size())
 		{
+			// parent is empty,i.e. no parent => is root
 			if (serv.parent.empty())
 			{
 				//std::cout << "Finished building tree" << std::endl;\newline
@@ -113,6 +119,64 @@ void Server::ProcessMessage(const char* buffer)
 		test_nums.emplace_back(std::stoi(contents));
 		sum += std::stoi(contents);
 		Broadcast(contents, node_map[std::stoi(source)]);
+		
+		// set reach path
+		// for each node x, reach path for node i which is not 1-hop neighbor of x,
+		// is node j if broadcast msg with origin = i came to x through source = j
+		// j is 1-hop neighbor of x
+		this->reachPath[std::stoi(brcOrigin)] = std::stoi(source);
+
+		// receiving broadcast from an origin x set value at index x to false, 
+		// receiving convergecast intended for converge destination x set value at index x to true
+		// here, on reception of broadcast, set converged for index x = brcast origin to false
+		this->destConverged[std::stoi(brcOrigin)] = false;
+		
+		// children vector is empty, i.e. no children => is leaf, start convergecast
+		if ( serv.children.empty() )
+		{
+			convergeCount = std::to_string(1);
+			// dest = parent, origin = this leaf node, converge dest/root = broadcast's origin
+			Message_Handler("Convergecast", serv.parent[0], convergeCount, serv.node_id, std::stoi(brcOrigin));
+			
+			// set converged flag for index x = brcast origin to true
+			this->destConverged[std::stoi(brcOrigin)] = true;
+		}
+	}
+
+	else if (kind == "Convergecast")
+	{
+		// if convergeDest != this node
+		// continue ongoing convergecast for a converge destination
+		// dest = find through reach path at index = converge dest 
+		// origin = unchanged, converge dest/root = unchanged
+
+		if ((std::stoi(convergeDest)) != serv.node_id )
+		{
+			if (!(this->destConverged[std::stoi(convergeDest)]))
+			{
+				// if converged flag for destination x is false, increment converge count, then set flag to true
+				convergeCount = std::to_string(std::stoi(contents) + 1);
+				this->destConverged[std::stoi(convergeDest)] = true;
+				Message_Handler("Convergecast", this->node_map[this->reachPath[std::stoi(convergeDest)]], convergeCount);
+			}
+			else
+			{
+				// else, no change to converge count (in contents)
+				Message_Handler("Convergecast", this->node_map[this->reachPath[std::stoi(convergeDest)]], contents);
+			}
+		}
+		else
+		{
+			// converge cast msg reach destination
+			convergeSum += std::stoi(contents);
+			// convergeSum = number of nodes - 1 => convergecast completed => broadcast completed successfully
+			if(convergeSum == (this->num_nodes - 1) )
+			{
+				this->finBroadcast = true;
+			}
+		}
+		
+
 	}
 }
 
@@ -123,8 +187,19 @@ Server::Server(Node& serv)
 	num_terminate_messages = 0;
 }
 
-Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), discovered(false), sum(0)
+Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), num_terminate_messages(0), discovered(false), finBroadcast(false), sum(0)
 {
+	num_nodes = node_map.size();
+	reachPath = new int[num_nodes];
+	memset(reachPath, -1, num_nodes);
+	destConverged = new bool[num_nodes];
+	memset(destConverged, false, num_nodes);
+}
+
+Server::~Server()
+{
+	delete [] reachPath;
+	delete [] destConverged;
 }
 
 int Server::Listen()
@@ -197,7 +272,7 @@ int Server::Listen()
 
 	bool flag = true;
 
-	while(1) 
+	while(true) 
 	{  // main accept() loop
 		sin_size = sizeof their_addr;
 		newsockfd= accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
@@ -225,15 +300,28 @@ int Server::Listen()
 			{
 				sum += i;
 				test_nums.emplace_back(i);
-				Broadcast(std::to_string(i));
+				Broadcast(std::to_string(i), serv.node_id);
 			}
 			flag = false;
 		}
 
 		// How do I end the message service?
 		// I'm not sure
+		// Khoa: no requirement for termination or end of service, only requirement for notification of broadcast completion
 		//std::cout << "Sum: " << std::accumulate(test_nums.begin(), test_nums.end(), 0) << std::endl;
-		std::cout << "Sum: " << sum << std::endl;
+
+		// finBroadcast can also be used as flag for termination of the service, when needed.
+		if(this->finBroadcast)
+		{
+			// completed a broadcast
+			std::cout << "Broadcast completed!" << std::endl;
+			std::cout << "Sum: " << sum << std::endl;
+			this->finBroadcast = false;
+		}
+
+
+
+
 
 	}  // end server
 	sleep(2);
@@ -273,6 +361,42 @@ void Server::Broadcast(std::string contents)
 	Broadcast(contents, serv);
 }
 
+// Khoa: I add 2 overloaded broadcast function to include origin
+
+void Server::Broadcast(std::string contents, Node ignore, int origin)
+{
+	// Send a message to all neighbors
+	// Except that you want to excluse sending it back to the source
+	// I'll just overload this function for that case
+	
+	//std::cout << "Broadcasting " << contents << std::endl;
+	
+	if(!serv.parent.empty())
+	{
+		if (ignore.node_id != serv.parent[0].node_id)
+		{
+			Message_Handler("Broadcast", serv.parent[0], contents, origin);
+		}
+	}
+	for (const auto& n: serv.children)
+	{
+		if (ignore.node_id != n.node_id)
+		{
+			Message_Handler("Broadcast", n, contents, origin);
+		}
+	}
+}
+
+void Server::Broadcast(std::string contents, int origin)
+{
+	// Send a message to all neighbors
+	// Except that you want to excluse sending it back to the source
+	// I'll just overload this function for that case
+	std::cout << "Broadcasting " << contents << std::endl;
+	Broadcast(contents, serv, origin);
+}
+
+
 void Server::Message_Handler(std::string type, Node destination, std::string contents)
 {
 	Message pack(type, contents);
@@ -295,6 +419,31 @@ void Server::Message_Handler(std::string type, Node destination)
 	c1.SendMessage(pack);
 	c1.Close();
 }
+
+// Khoa: I add 2 overloaded Message_Handler functions
+// 1 to work with Broadcast with origin, and 1 to work with Convergecast
+void Server::Message_Handler(std::string type, Node destination, std::string contents, int origin)
+{
+	Message pack(type, contents);
+	pack.source = serv.node_id;
+	pack.origin = origin;
+	pack.convergeDest = -1;
+	Client c1(serv, destination);
+	c1.SendMessage(pack);
+	c1.Close();
+}
+
+void Server::Message_Handler(std::string type, Node destination, std::string contents, int origin, int convergeDest)
+{
+	Message pack(type, contents);
+	pack.source = serv.node_id;
+	pack.origin = origin;
+	pack.convergeDest = convergeDest;
+	Client c1(serv, destination);
+	c1.SendMessage(pack);
+	c1.Close();
+}
+
 
 void *Server::get_in_addr(struct sockaddr *sa)
 {

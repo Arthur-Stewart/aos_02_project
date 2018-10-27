@@ -8,11 +8,15 @@ class Message
 {
 	public:
 		std::string kind;
-		int source;
+		int source; // sending node
 
 		std::vector<int> path;
 		std::vector<int> visited;
-		int destination;
+		int destination; // receiving node
+
+		int origin; // where the msg first generated, used for broadcast - convergecast
+		int convergeDest; // the root where the converge cast msg is intended, used for convergecast 
+
 
 		std::string contents;
 

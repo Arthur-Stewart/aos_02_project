@@ -48,7 +48,7 @@ class Server
 
 		//From project 1
 		std::map<int, int> k_hop_map;
-		int num_nodes;
+		int num_nodes; // n, number of nodes in the network
 		std::set<int> terminated_nodes;
 		int num_terminate_messages;
 
@@ -64,17 +64,32 @@ class Server
 		std::vector<int> test_nums;
 		size_t sum;
 
+		// dynamic int array to store "path", i.e. a node among 1-hop neighbors, to reach each node 
+		int * reachPath;
+		// dynamic boolean array to check and control the broadcast-convergecast
+		// receiving broadcast from an origin x set value at index x to false, 
+		// receiving convergecast intended for converge destination x set value at index x to true
+		bool * destConverged;
+		bool finBroadcast;
+
+
 		void Message_Handler(std::string type, std::string destination);
 		void Message_Handler(std::string type, Node destination);
 
 		void Message_Handler(std::string type, Node destination, std::string contents);
+		void Message_Handler(std::string type, Node destination, std::string contents, int origin);
+		void Message_Handler(std::string type, Node destination, std::string contents, int origin, int convergeDest);
 
 		void Broadcast(std::string contents);
 		void Broadcast(std::string contents, Node ignore);
 		//void Broadcast(std::string contents, std::string ignore)
+		void Broadcast(std::string contents, int origin);
+		void Broadcast(std::string contents, Node ignore, int origin);
 
 		Server(Node& serv);
 		Server(Node& serv, std::unordered_map<int, Node> node_map);
+
+		~Server();
 		
 		int Listen();
 		void ProcessMessage(const char* buffer);
