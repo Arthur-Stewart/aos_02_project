@@ -6,7 +6,7 @@ Message::Message() : kind("outbound"), origin(-1)
 Message::Message(std::string kind) : kind(kind), origin(-1)
 {}
 
-Message::Message(std::string kind, std::string contents) : origin(-1), kind(kind), contents(contents)
+Message::Message(std::string kind, std::string contents) : kind(kind), origin(-1), contents(contents)
 {}
 
 std::string Message::To_String()

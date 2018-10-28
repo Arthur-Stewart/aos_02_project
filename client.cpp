@@ -20,13 +20,8 @@
 //	return (-1);
 //}
 
-Client::Client(const Node& src, const Node& dest)
+Client::Client(const Node& src, const Node& dest) : dest(dest), src(src)
 {
-	// Lets split up functionality
-	// Send message to one hop neighbors 
-	this -> dest = dest;
-	this -> src = src;
-
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -35,6 +30,7 @@ Client::Client(const Node& src, const Node& dest)
 
 	if ((rv = getaddrinfo(dest.hostname.c_str(), dest.port.c_str(), &hints, &servinfo)) != 0) 
 	{
+		std::cout << "Client side error" << std::endl;
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		error_num = 1;
 		exit(1);
@@ -85,28 +81,21 @@ Client::Client(const Node& src, const Node& dest)
 
 int Client::SendMessage(Message out)
 {
-//	std::stringstream ss;
-//    //change the underlying buffer and save the old buffer
-//    auto old_buf = std::cout.rdbuf(ss.rdbuf()); 
-//	std::cout << out;
-//    std::cout.rdbuf(old_buf); //reset
-//
-//	const std::string& tmp = ss.str();
-//	const char* msg = tmp.c_str();
-
 	const char* msg = out.To_String().c_str();
 
 	// Size of buffer should really be size of msg + 1 
 	char buffer[1024]; 
     strcpy(buffer, msg);  
-
-//	std::cout << "Send Message" << std::endl;
-//	printf("%s", buffer);
-
 	int msg_rtn = write(sockfd,buffer,strlen(buffer)); // Send the message to neighbors 
+
+	if (msg_rtn == 0)
+	{
+		return 1;
+	}
 	memset(buffer, 0, 1024); // reset buffer
 
-	return 0;  // Return int so you could get error code
+	return 0;  
+
 	// How do I serialize the structure to pass it through the TCP socket?
 }
 
@@ -115,7 +104,6 @@ int Client::Close()
 		close(sockfd);
 		return 0;
 }
-
 
 void* Client::get_in_addr(struct sockaddr *sa)
 {

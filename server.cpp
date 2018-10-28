@@ -7,10 +7,11 @@ int Server::Listen()
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; // use my IP
-	//std::cout << "Listening port: " << serv.port << std::endl;
+	//std::cerr << "Listening port: " << serv.port << std::endl;
 
 	if ((rv = getaddrinfo(NULL, serv.port.c_str(), &hints, &servinfo)) != 0) 
 	{
+		std::cout << "Server side error" << std::endl;
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		error_num = 1;
 		exit(1);
@@ -61,7 +62,10 @@ int Server::Listen()
 	char buffer[1024];
 	bool flag = true;
 
-	while(true) // main accept() loop
+
+	int sum_to_inclusive = 25;
+
+	while(true) 
 	{  
 		sin_size = sizeof their_addr;
 		newsockfd= accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
@@ -83,11 +87,14 @@ int Server::Listen()
 		if (flag && discovered)
 		{
 			// Add test numbers to vector
-			for (int i = 0; i <= 20; ++i)
+			for (int i = 1; i <= sum_to_inclusive; ++i)
 			{
-				sum += i;
+				//sum += i;
 				test_nums.emplace_back(i);
 				message_queue.emplace(std::to_string(i));
+				
+				//message_queue.emplace("Advanced_Operating_Systems_" + std::to_string(i));
+				//message_queue.emplace("Hello_Shreyas_" + std::to_string(i));
 			}
 
 			// Process first message in the queue
@@ -97,7 +104,15 @@ int Server::Listen()
 			flag = false;
 		}
 
-		std::cerr << "Sum: " << sum << std::endl;
+		if (discovered)
+		{
+			std::cerr << "Sum: " << sum << std::endl;
+		}
+
+		if (sum == size_t(num_nodes *(sum_to_inclusive * (sum_to_inclusive + 1) / 2 )))
+		{
+			std::cerr << "SUCCESS: Gauss is happy" << std::endl;
+		}
 
 	}  // end server
 	sleep(2);
@@ -111,8 +126,6 @@ void Server::ProcessMessage(const char* buffer)
 	std::vector<std::string> msg_tokens{std::istream_iterator<std::string>{iss},std::istream_iterator<std::string>{}};
 
 	std::string kind = msg_tokens[0];
-	//std::string source = msg_tokens[1];
-	//std::string origin = msg_tokens[2]; // broadcast's origin
 	
 	int source = std::stoi(msg_tokens[1]);
 	int origin = std::stoi(msg_tokens[2]); // Broadcast's origin
@@ -162,7 +175,6 @@ void Server::ProcessMessage(const char* buffer)
 	
 	else if (kind == "Parent")
 	{
-		//serv.children.emplace_back(node_map[std::stoi(source)]);
 		serv.children.emplace_back(node_map[source]);
 	}
 
@@ -186,7 +198,6 @@ void Server::ProcessMessage(const char* buffer)
 
 				// Add tree_neighbors (unrooted tree)
 				serv.tree_neighbors = serv.children;
-
 				serv.PrintTreeNeighbors();
 
 				for (const auto&n: serv.children)
@@ -215,7 +226,6 @@ void Server::ProcessMessage(const char* buffer)
 		}
 
 		serv.PrintTree();
-
 		serv.PrintTreeNeighbors();
 		
 		for (const auto&n: serv.children)
@@ -229,6 +239,7 @@ void Server::ProcessMessage(const char* buffer)
 	{
 		std::cout << "Received Broadcast: " << contents << std::endl;
 
+		//For testing
 		test_nums.emplace_back(std::stoi(contents));
 		sum += std::stoi(contents);
 
@@ -241,8 +252,6 @@ void Server::ProcessMessage(const char* buffer)
 		else // Continue Broadcast
 		{
 			Broadcast(contents, origin);
-			//Working broadcast
-			//Broadcast(contents, node_map[std::stoi(source)], std::stoi(origin));
 		}
 	}
 
@@ -253,11 +262,13 @@ void Server::ProcessMessage(const char* buffer)
 		if (serv.node_id == origin)
 		{
 			// Convergecast reached original broadcaster
-
 			if(++converge_count_map[origin] == Num_Children(origin))
 			{
 				converge_count_map[origin] = 0;
 				//std::cerr << "Convergecast success: " << contents << std::endl;
+				//For testing
+				test_nums.emplace_back(std::stoi(contents));
+				sum += std::stoi(contents);
 				// Send next message is the queue if it exists
 				if (!message_queue.empty())
 				{
@@ -302,45 +313,6 @@ void Server::Broadcast(std::string contents, int origin)
 	}
 }
 
-// TO BE IMPLEMENTED
-bool Server::IsChild()
-{
-	return true;
-}
-
-// KEY BROADCAST OPERATION
-void Server::Broadcast(std::string contents, Node ignore, int origin)
-{
-	// Send a message to all neighbors except ignore (previous sender)
-	for (const auto &dest: serv.tree_neighbors)
-	{
-		if (ignore.node_id != dest.node_id)
-		{
-			Message_Handler("Broadcast", dest, contents, origin);
-		}
-	}
-}
-
-// KEY MESSAGE_HANDLER OPERATION
-void Server::Message_Handler(std::string type, Node destination, std::string contents, int origin)
-{
-	Message pack(type, contents);
-	pack.source = serv.node_id;
-	pack.origin = origin;
-	Client c1(serv, destination);
-	c1.SendMessage(pack);
-	c1.Close();
-}
-
-void Server::Message_Handler(std::string type, Node destination, std::string contents)
-{
-	Message pack(type, contents);
-	pack.source = serv.node_id;
-	Client c1(serv, destination);
-	c1.SendMessage(pack);
-	c1.Close();
-}
-
 void Server::Message_Handler(std::string type, std::string destination)
 {
 	Message_Handler(type, node_map[std::stoi(destination)]);
@@ -364,15 +336,32 @@ void Server::Message_Handler(std::string type, Node destination)
 	c1.Close();
 }
 
-bool Server::IsLeaf(std::string origin)
+void Server::Message_Handler(std::string type, Node destination, std::string contents)
 {
-	return IsLeaf(std::stoi(origin));
+	Message pack(type, contents);
+	pack.source = serv.node_id;
+	Client c1(serv, destination);
+	c1.SendMessage(pack);
+	c1.Close();
+}
+
+// KEY MESSAGE_HANDLER OPERATION
+void Server::Message_Handler(std::string type, Node destination, std::string contents, int origin)
+{
+	Message pack(type, contents);
+	pack.source = serv.node_id;
+	pack.origin = origin;
+	Client c1(serv, destination);
+	c1.SendMessage(pack);
+	c1.Close();
 }
 
 bool Server::IsLeaf(int origin)
 {
-	// How to determine if a node is a logical leaf given a particular origin
-	// Number of tree_neighbors will be 1
+	if (serv.node_id == origin)
+	{
+		return false;
+	}
 	return serv.tree_neighbors.size() == 1;
 }
 
@@ -389,27 +378,11 @@ size_t Server::Num_Children(int origin)
 
 //Server Constructors/Destructor
 
-Server::Server(Node& serv)
-{
-	this -> serv = serv;
-	discovered = false;
-	num_terminate_messages = 0;
-}
+Server::Server(Node& serv) : serv(serv), discovered(false)
+{}
 
-Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), num_terminate_messages(0), discovered(false), finBroadcast(false), sum(0)
-{
-	num_nodes = node_map.size();
-	reachPath = new int[num_nodes];
-	memset(reachPath, -1, num_nodes);
-	destConverged = new bool[num_nodes];
-	memset(destConverged, false, num_nodes);
-}
-
-Server::~Server()
-{
-	delete [] reachPath;
-	delete [] destConverged;
-}
+Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : num_nodes(node_map.size()), serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), discovered(false), sum(0)
+{}
 
 // SOCKET HELPERS
 
