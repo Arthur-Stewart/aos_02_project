@@ -1,25 +1,14 @@
 11
 
-0 dc01.utdallas.edu 30001
-1 dc02.utdallas.edu 30001
-2 dc03.utdallas.edu 30002
-3 dc04.utdallas.edu 30003
-4 dc05.utdallas.edu 30004
-5 dc06.utdallas.edu 30005
-6 dc07.utdallas.edu 30006
-7 dc08.utdallas.edu 30007
-8 dc09.utdallas.edu 30008
-9 dc10.utdallas.edu 30009
-10 dc11.utdallas.edu 30010
+dc01 30001  1 2 10  
+dc02 30001  0 3 4
+dc03 30002  0 3 5
+dc04 30003  1 2 4 5
+dc05 30004  1 3 6 7
+dc06 30005  2 3 6 8
+dc07 30006  4 5
+dc08 30007  4     
+dc09 30008  5 9    
+dc10 30009  8      
+dc11 30010  0     
 
-0 1 2 10
-1 0 3 4
-2 0 3 5
-3 1 2 4 5
-4 1 3 6 7 
-5 2 3 6 8
-6 4 5
-7 4 
-8 5 9 
-9 8
-10 0

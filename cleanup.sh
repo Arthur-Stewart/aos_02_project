@@ -16,10 +16,10 @@ cat $CONFIGLOCAL | sed -e "s/#.*//" | sed -e "/^\s*$/d" |
     while [[ $n -lt $i ]]
     do
     	read line
-        host=$( echo $line | awk '{ print $2 }' )
 
+        host=$( echo $line | awk '{ print $1 }' )
         echo $host
-        urxvt -e sh -c "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host killall -u $netid" &
+        urxvt -e sh -c "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $netid@$host.utdallas.edu killall -u $netid" &
         sleep 1
 
         n=$(( n + 1 ))

@@ -187,9 +187,6 @@ void Server::ProcessMessage(const char* buffer)
 			// parent is empty,i.e. no parent => is root
 			if (serv.parent.empty())
 			{
-				//std::cout << "Finished building tree" << std::endl;\newline
-				serv.PrintTree();
-
 				// Add tree_neighbors (unrooted tree)
 				serv.tree_neighbors = serv.children;
 				serv.PrintTreeNeighbors();
@@ -219,7 +216,6 @@ void Server::ProcessMessage(const char* buffer)
 			serv.tree_neighbors.emplace_back(v);
 		}
 
-		serv.PrintTree();
 		serv.PrintTreeNeighbors();
 		
 		for (const auto&n: serv.children)

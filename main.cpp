@@ -13,9 +13,6 @@
 #include <thread>
 #include <vector>
 
-// Break the problem into pieces
-// After setting up the topology you need a distributed algorithm that finds the k hop neights (communication through sockets)
-
 int main(int argc, char** argv)
 {
 	if(argc != 3)
@@ -28,7 +25,8 @@ int main(int argc, char** argv)
 	p1.Parse_Config();
 
 	Node process_node = p1.node_map[std::stoi(argv[2])];
-	std::cout << "node_id " << process_node.node_id << std::endl;
+	//std::cout << "node_id " << process_node.node_id << std::endl;
+	std::cout << process_node << std::endl;
 
 	Server s1(process_node, p1.node_map);
 	s1.num_nodes = p1.num_nodes;

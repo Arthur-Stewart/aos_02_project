@@ -5,6 +5,7 @@
 #include <string>
 #include <cstddef>
 #include <fstream>
+#include <map>
 #include <unordered_map>
 #include <iostream>
 #include <iterator>
@@ -16,14 +17,19 @@ class Parser
 	private:
 
 	public:
-		int num_nodes;
-		int line_num; 
-		//std::ifstream in;
-		std::string line;
 		std::string config;
-		//std::vector<Node> nodes;
+
+		int line_num; 
+		int num_nodes;
+
+		std::string line;
+
 		std::unordered_map<int, Node> node_map;
+
+		std::map<int, std::vector<int>> table;
+
 		Parser(const std::string config_file);
+
         void Parse_Config();
 		bool Is_Valid_Line(std::string line);
 };
