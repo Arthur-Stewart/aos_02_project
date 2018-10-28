@@ -62,9 +62,6 @@ int Server::Listen()
 	char buffer[1024];
 	bool flag = true;
 
-
-	int sum_to_inclusive = 25;
-
 	while(true) 
 	{  
 		sin_size = sizeof their_addr;
@@ -104,13 +101,10 @@ int Server::Listen()
 			flag = false;
 		}
 
-		if (discovered)
+		if (!correct_sum && sum == size_t(num_nodes *(sum_to_inclusive * (sum_to_inclusive + 1) / 2 )))
 		{
+			correct_sum = true;
 			std::cerr << "Sum: " << sum << std::endl;
-		}
-
-		if (sum == size_t(num_nodes *(sum_to_inclusive * (sum_to_inclusive + 1) / 2 )))
-		{
 			std::cerr << "SUCCESS: Gauss is happy" << std::endl;
 		}
 
@@ -269,6 +263,7 @@ void Server::ProcessMessage(const char* buffer)
 				//For testing
 				test_nums.emplace_back(std::stoi(contents));
 				sum += std::stoi(contents);
+				std::cerr << "Sum: " << sum << std::endl;
 				// Send next message is the queue if it exists
 				if (!message_queue.empty())
 				{
@@ -381,7 +376,7 @@ size_t Server::Num_Children(int origin)
 Server::Server(Node& serv) : serv(serv), discovered(false)
 {}
 
-Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : num_nodes(node_map.size()), serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), discovered(false), sum(0)
+Server::Server(Node& serv, std::unordered_map<int, Node> node_map) : num_nodes(node_map.size()), serv(serv), node_map(node_map), num_discovery_message(0), num_no_message(0), num_done_message(0), discovered(false), sum(0) 
 {}
 
 // SOCKET HELPERS

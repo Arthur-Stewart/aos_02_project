@@ -65,6 +65,8 @@ class Server
 		// For testing
 		std::vector<int> test_nums;
 		size_t sum;
+		int sum_to_inclusive = 25;
+		bool correct_sum = false;
 
 		std::queue<std::string> message_queue;
 		std::unordered_map<int, int> parent_map;
