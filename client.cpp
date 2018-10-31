@@ -31,6 +31,7 @@ Client::Client(const Node& src, const Node& dest) : dest(dest), src(src)
 	if ((rv = getaddrinfo(dest.hostname.c_str(), dest.port.c_str(), &hints, &servinfo)) != 0) 
 	{
 		std::cout << "Client side error" << std::endl;
+		std::cout << "Return value of getaddrinfo: " << rv << std::endl;
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		error_num = 1;
 		exit(1);

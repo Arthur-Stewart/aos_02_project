@@ -65,7 +65,7 @@ class Server
 		// For testing
 		std::vector<int> test_nums;
 		size_t sum;
-		int sum_to_inclusive = 27;
+		int sum_to_inclusive = 100;
 		bool correct_sum = false;
 
 		std::queue<std::string> message_queue;
